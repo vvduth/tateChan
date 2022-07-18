@@ -1,3 +1,4 @@
+import { UserResolver } from './resolvers/user';
 import { PostResolver } from './resolvers/post';
 import { HelloResolver } from "./resolvers/hello";
 import { MikroORM, RequiredEntityData } from "@mikro-orm/core";
@@ -23,7 +24,7 @@ const main = async () => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [HelloResolver, PostResolver],
+      resolvers: [HelloResolver, PostResolver, UserResolver],
       validate: false,
     }),
     context: ({req, res}) => ({em: emFork})
