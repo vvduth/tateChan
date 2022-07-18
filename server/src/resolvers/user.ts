@@ -1,4 +1,4 @@
-import { User } from './../entities/User';
+import { User } from "./../entities/User";
 import { RequiredEntityData } from "@mikro-orm/core";
 import { MyContext } from "./../types";
 import {
@@ -24,67 +24,115 @@ class UsernamePasswordInput {
 }
 
 @ObjectType()
-class FieldError{
-    @Field(() => String)
-    field?: string ;
+class FieldError {
+  @Field(() => String)
+  field?: string;
 
-    @Field(()=> String)
-    message?: string ;
-
+  @Field(() => String)
+  message?: string;
 }
 
-@ObjectType() 
+@ObjectType()
 class UserResponse {
-    @Field(() => [FieldError], {nullable:true})
-    error?: FieldError[];
-    
-    @Field(() => User, {nullable:true})
-    user?: User;
+  @Field(() => [FieldError], { nullable: true })
+  error?: FieldError[];
+
+  @Field(() => User, { nullable: true })
+  user?: User;
 }
 
 @Resolver()
 export class UserResolver {
-  @Mutation(() => User)
+  @Mutation(() => UserResponse)
   async register(
     @Arg("options", () => UsernamePasswordInput) options: UsernamePasswordInput,
     @Ctx() { em }: MyContext
-  ) {
+  ): Promise<UserResponse> {
+    if (options.username.length <= 2) {
+      return {
+        error: [
+          {
+            field: "username",
+            message: "username must be longer than 2 characters",
+          },
+        ],
+      };
+    }
+
+    if (options.password.length <= 2) {
+      return {
+        error: [
+          {
+            field: "password",
+            message: "password must be longer than 2 characters",
+          },
+        ],
+      };
+    }
+    const user2 = await em.fork().findOne(User, { username: options.username });
+    if (user2) {
+        return {
+            error: [
+              {
+                field: "Username",
+                message: "username existed",
+              },
+            ],
+          };
+    }
     const hasedPassword = await argon2.hash(options.password);
-    const user = em
-      .fork()
-      .create(User, {
-        username: options.username,
-        password: hasedPassword,
-      } as RequiredEntityData<User>);
-    await em.persistAndFlush(user);
-    return user;
+
+    const user = em.fork().create(User, {
+      username: options.username,
+      password: hasedPassword,
+    } as RequiredEntityData<User>);
+    try {
+        await em.persistAndFlush(user);
+    } catch(err:any) {
+        if (err.code === '23505') {
+            return {
+                error: [
+                  {
+                    field: "Username",
+                    message: "username existed",
+                  },
+                ],
+              };
+        }
+    }
+    
+    return { user };
   }
 
   @Mutation(() => UserResponse)
   async login(
     @Arg("options", () => UsernamePasswordInput) options: UsernamePasswordInput,
     @Ctx() { em }: MyContext
-  ):Promise<UserResponse> {
-    const user = await em.fork().findOne(User, {username: options.username}) ; 
+  ): Promise<UserResponse> {
+    const user = await em.fork().findOne(User, { username: options.username });
     if (!user) {
-        return{
-            error: [{
-                field: 'username',
-                message: 'Username doesnot exist'
-            }]
-        }
+      return {
+        error: [
+          {
+            field: "username",
+            message: "Username doesnot exist",
+          },
+        ],
+      };
     }
-    const valid = await argon2.verify(user.password,options.password);
+    const valid = await argon2.verify(user.password, options.password);
     if (!valid) {
-        return{
-            error: [{
-                field: 'Password',
-                message: 'Password is not correct'
-            }]
-        }
+      return {
+        error: [
+          {
+            field: "Password",
+            message: "Password is not correct",
+          },
+        ],
+      };
     }
     return {
-        user,
+      user,
     };
   }
 }
