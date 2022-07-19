@@ -12,6 +12,12 @@ import { buildSchema } from "type-graphql";
 import "reflect-metadata";
 import * as redis from 'redis';
 import session from "express-session";
+import http from 'http'
+import {
+  ApolloServerPluginDrainHttpServer,
+  ApolloServerPluginLandingPageLocalDefault,
+} from 'apollo-server-core';
+
 
 
 
@@ -31,8 +37,9 @@ const main = async () => {
   console.log(posts);
 
   const app = express();
-
+ 
   await redisClient.connect();
+  //hasdas
 
   app.use(
     session({
@@ -41,7 +48,7 @@ const main = async () => {
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, //10 years
         httpOnly: true, 
-        sameSite: 'lax',
+        sameSite: 'none',
         secure: true  // cookie only works in https
       },
       saveUninitialized: false,
@@ -49,16 +56,28 @@ const main = async () => {
       resave: false,
     })
   );
+  app.set('trust proxy', 1);
+
+  const httpServer = http.createServer(app);
+    const plugins = [ApolloServerPluginDrainHttpServer({ httpServer })];
 
   const apolloServer = new ApolloServer({
+    plugins,
     schema: await buildSchema({
       resolvers: [HelloResolver, PostResolver, UserResolver],
       validate: false,
     }),
     context: ({ req, res }) : MyContext => ({ em: emFork, req, res }),
+
   });
   await apolloServer.start();
-  apolloServer.applyMiddleware({ app, cors: { credentials: true, origin: "https://studio.apollographql.com" }, });
+
+  const cors = {
+    credentials: true,
+    origin: 'https://studio.apollographql.com'
+}
+
+  apolloServer.applyMiddleware({ app, cors });
   app.listen(5000, () => {
     console.log("App listen on port 5000");
   });
