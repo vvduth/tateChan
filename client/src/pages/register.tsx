@@ -2,7 +2,8 @@ import React from "react";
 import { Formik, Form } from "formik";
 import Wrapper from "../components/Wrapper";
 import InputField from "../components/InputField";
-import {useMutation} from "urql" ;
+import { toErrorMap } from "../utils/toErrorMap";
+import { useMutation } from "urql";
 import {
   Box,
   Button,
@@ -13,37 +14,26 @@ import {
 } from "@chakra-ui/react";
 import { roundValueToStep } from "@chakra-ui/utils";
 import { useRegisterMutation } from "../generated/graphql";
+import { useRouter } from "next/router";
 
 interface registerProps {}
 
-const REGISTER_MUT = `mutation Register($username: String!, $password: String!){
-  register(options: {username: $username, password:$password}) {
-    error {
-      field
-      message
-    }
-    user {
-      createdAt
-      id
-      username
-    }
-  }
-}`
-
 const Register: React.FC<registerProps> = ({}) => {
-  const [,register] = useRegisterMutation();
+  const router = useRouter();
+  const [, register] = useRegisterMutation();
   return (
     <Wrapper variant="small">
       <Formik
         initialValues={{ username: "", password: "" }}
-        onSubmit={async (value, {setErrors}) => {
+        onSubmit={async (value, { setErrors }) => {
           console.log(value);
-          const response =  await register(value);
-          if (response.data?.register.error){
-              setErrors({
-                username: "hey I am an error"
-              })
-          } 
+          const response = await register(value);
+          if (response.data?.register.error) {
+            setErrors(toErrorMap(response.data.register.error));
+          } else if (response.data?.register.user) {
+            console.log("here");
+            router.push("/");
+          }
         }}
       >
         {({ isSubmitting }) => (
@@ -61,7 +51,12 @@ const Register: React.FC<registerProps> = ({}) => {
                 type="password"
               />
             </Box>
-            <Button type="submit" isLoading={isSubmitting} mt={4} colorScheme="teal">
+            <Button
+              type="submit"
+              isLoading={isSubmitting}
+              mt={4}
+              colorScheme="teal"
+            >
               Register
             </Button>
           </Form>
@@ -72,5 +67,3 @@ const Register: React.FC<registerProps> = ({}) => {
 };
 
 export default Register;
-
-
