@@ -43,10 +43,24 @@ class UserResponse {
 
 @Resolver()
 export class UserResolver {
+
+  @Query(()=> User, {nullable: true})
+  me( 
+    @Ctx() {req, em}: MyContext
+  ) {
+    // if u are not logged in
+    if (!req.session.userId) {
+      return null
+    }
+
+    const user = em.fork().findOne(User, {id: req.session.userId});
+    return user ; 
+  }
+
   @Mutation(() => UserResponse)
   async register(
     @Arg("options", () => UsernamePasswordInput) options: UsernamePasswordInput,
-    @Ctx() { em }: MyContext
+    @Ctx() { em,req }: MyContext
   ): Promise<UserResponse> {
     if (options.username.length <= 2) {
       return {
@@ -100,6 +114,10 @@ export class UserResolver {
               };
         }
     }
+
+    // store user id session right after register
+    // create userId filed in the session object
+    req.session.userId = user.id ; 
     
     return { user };
   }
