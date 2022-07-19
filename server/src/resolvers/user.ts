@@ -14,6 +14,11 @@ import {
 import "reflect-metadata";
 import argon2 from "argon2";
 
+function isLowerCase(str:string)
+{
+    return str === str.toLowerCase() && str !== str.toUpperCase();
+}
+
 @InputType()
 class UsernamePasswordInput {
   @Field(() => String)
@@ -83,6 +88,18 @@ export class UserResolver {
         ],
       };
     }
+
+    if (!isLowerCase(options.username)) {
+      return {
+        error: [
+          {
+            field: "Username",
+            message: "username can not have uppervase letter",
+          },
+        ],
+      };
+    }
+
     const user2 = await em.fork().findOne(User, { username: options.username });
     if (user2) {
         return {
