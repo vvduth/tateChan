@@ -3,14 +3,9 @@ import { Formik, Form } from "formik";
 import Wrapper from "../components/Wrapper";
 import InputField from "../components/InputField";
 import { toErrorMap } from "../utils/toErrorMap";
-import { useMutation } from "urql";
 import {
   Box,
-  Button,
-  FormControl,
-  FormErrorMessage,
-  FormLabel,
-  Input,
+  Button
 } from "@chakra-ui/react";
 import { roundValueToStep } from "@chakra-ui/utils";
 import { useRegisterMutation } from "../generated/graphql";

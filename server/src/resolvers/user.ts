@@ -1,3 +1,4 @@
+import { session } from 'express-session';
 import { User } from "./../entities/User";
 import { RequiredEntityData } from "@mikro-orm/core";
 import { MyContext } from "./../types";
@@ -65,7 +66,7 @@ export class UserResolver {
   @Mutation(() => UserResponse)
   async register(
     @Arg("options", () => UsernamePasswordInput) options: UsernamePasswordInput,
-    @Ctx() { em,req }: MyContext
+    @Ctx() { em,req,res }: MyContext
   ): Promise<UserResponse> {
     if (options.username.length <= 2) {
       return {
@@ -93,8 +94,8 @@ export class UserResolver {
       return {
         error: [
           {
-            field: "Username",
-            message: "username can not have uppervase letter",
+            field: "username",
+            message: "username can not have uppercase letter",
           },
         ],
       };
@@ -105,7 +106,7 @@ export class UserResolver {
         return {
             error: [
               {
-                field: "Username",
+                field: "username",
                 message: "username existed",
               },
             ],
@@ -118,23 +119,15 @@ export class UserResolver {
       password: hasedPassword,
     } as RequiredEntityData<User>);
     try {
-        await em.persistAndFlush(user);
+        await em.fork().persistAndFlush(user);
     } catch(err:any) {
-        if (err.code === '23505') {
-            return {
-                error: [
-                  {
-                    field: "Username",
-                    message: "username existed",
-                  },
-                ],
-              };
-        }
+
     }
 
     // store user id session right after register
     // create userId filed in the session object
     req.session.userId = user.id ; 
+    res.send(req.session.userId) ;
     
     return { user };
   }
@@ -142,7 +135,7 @@ export class UserResolver {
   @Mutation(() => UserResponse)
   async login(
     @Arg("options", () => UsernamePasswordInput) options: UsernamePasswordInput,
-    @Ctx() { em, req }: MyContext
+    @Ctx() { em, req,res }: MyContext
   ): Promise<UserResponse> {
     const user = await em.fork().findOne(User, { username: options.username });
     if (!user) {
@@ -160,7 +153,7 @@ export class UserResolver {
       return {
         error: [
           {
-            field: "Password",
+            field: "password",
             message: "Password is not correct",
           },
         ],
@@ -168,6 +161,7 @@ export class UserResolver {
     }
 
     req.session.userId = user.id ; 
+    res.send(req.session.userId) ;
     return {
       user,
     };
