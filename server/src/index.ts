@@ -43,7 +43,7 @@ const main = async () => {
 
   app.use(
     cors({
-      origin: ["http://localhost:3000", "https://studio.apollographql.com"],
+      origin: ["http://localhost:3000", "https://studio.apollographql.com", "http://localhost:5000/graphql"],
       credentials: true,
     })
   )
@@ -56,9 +56,9 @@ const main = async () => {
       store: new RedisStore({ client: redisClient, disableTouch: true }),
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, //10 years
-        httpOnly: false,
+        httpOnly: true,
         sameSite: "lax",
-        secure: true, // cookie only works in https
+        secure: false, // dont work = gay
       },
       saveUninitialized: false,
       secret: "123456789",
@@ -81,10 +81,7 @@ const main = async () => {
 
   apolloServer.applyMiddleware({
     app,
-    cors: {
-      credentials: true,
-      origin: ["http://localhost:3000", "https://studio.apollographql.com"],
-    },
+    cors: false,
   });
   app.listen(5000, () => {
     console.log("App listen on port 5000");
