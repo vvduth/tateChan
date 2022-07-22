@@ -1,4 +1,5 @@
-import { Session } from 'express-session';
+import { COOKIE_NAME } from './../constants';
+import { Session } from "express-session";
 import { User } from "./../entities/User";
 import { RequiredEntityData } from "@mikro-orm/core";
 import { MyContext } from "./../types";
@@ -15,9 +16,8 @@ import {
 import "reflect-metadata";
 import argon2 from "argon2";
 
-function isLowerCase(str:string)
-{
-    return str === str.toLowerCase() && str !== str.toUpperCase();
+function isLowerCase(str: string) {
+  return str === str.toLowerCase() && str !== str.toUpperCase();
 }
 
 @InputType()
@@ -49,24 +49,21 @@ class UserResponse {
 
 @Resolver()
 export class UserResolver {
-
-  @Query(()=> User, {nullable: true})
-  me( 
-    @Ctx() {req, em}: MyContext
-  ) {
+  @Query(() => User, { nullable: true })
+  me(@Ctx() { req, em }: MyContext) {
     // if u are not logged in
     if (!req.session.userId) {
-      return null
+      return null;
     }
 
-    const user = em.fork().findOne(User, {id: req.session.userId});
-    return user ; 
+    const user = em.fork().findOne(User, { id: req.session.userId });
+    return user;
   }
 
   @Mutation(() => UserResponse)
   async register(
     @Arg("options", () => UsernamePasswordInput) options: UsernamePasswordInput,
-    @Ctx() { em,req }: MyContext
+    @Ctx() { em, req }: MyContext
   ): Promise<UserResponse> {
     if (options.username.length <= 2) {
       return {
@@ -103,14 +100,14 @@ export class UserResolver {
 
     const user2 = await em.fork().findOne(User, { username: options.username });
     if (user2) {
-        return {
-            error: [
-              {
-                field: "username",
-                message: "username existed",
-              },
-            ],
-          };
+      return {
+        error: [
+          {
+            field: "username",
+            message: "username existed",
+          },
+        ],
+      };
     }
     const hasedPassword = await argon2.hash(options.password);
 
@@ -119,18 +116,15 @@ export class UserResolver {
       password: hasedPassword,
     } as RequiredEntityData<User>);
     try {
-        await em.fork().persistAndFlush(user);
-    } catch(err:any) {
-
-    }
+      await em.fork().persistAndFlush(user);
+    } catch (err: any) {}
 
     // store user id session right after register
     // create userId filed in the session object
-    
-    
+
     try {
-      req.session.userId = user.id ; 
-      console.log("cookie step, sent")
+      req.session.userId = user.id;
+      console.log("cookie step, sent");
     } catch (e) {
       console.log(e);
     }
@@ -165,10 +159,25 @@ export class UserResolver {
       };
     }
 
-    req.session.userId = user.id ; 
-    
+    req.session.userId = user.id;
+
     return {
       user,
     };
+  }
+
+  @Mutation(() => Boolean)
+  logout(@Ctx() { req,res }: MyContext) {
+    return new Promise((resolve) =>
+      req.session.destroy((err) => {
+        res.clearCookie(COOKIE_NAME);
+        if (err) {
+          console.log(err) ;
+          resolve(false);
+          return;
+        }
+        resolve(true);
+      })
+    );
   }
 }
